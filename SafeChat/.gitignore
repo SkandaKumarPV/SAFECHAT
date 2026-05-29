@@ -1,0 +1,12 @@
+.env
+.vscode/
+.idea/
+__pycache__/
+*.py[cod]
+*.pyo
+.ipynb_checkpoints/
+node_modules/
+dist/
+build/
+coverage/
+*.log
