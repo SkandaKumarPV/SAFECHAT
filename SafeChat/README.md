@@ -1,223 +1,85 @@
-# Multilingual Toxicity Detection System
+# SafeChat — Multilingual Toxicity Moderation
 
-This project shows how to build a real-world NLP moderation pipeline for social media comments and direct messages. It can detect toxic language, support multiple languages, translate when needed, and return a structured result that a backend or frontend can use for moderation.
+This repository contains a demo NLP moderation pipeline (not a production-ready hosted service) that detects toxic language across multiple languages, translates when necessary, and returns structured label scores and a severity level.
 
-The project is centered around three working parts:
+This updated README provides a concise guide to the repository contents, how to run the backend service, and where to find notebooks and example frontend code.
 
-- [Main+project.ipynb](Main+project.ipynb) for the original toxicity pipeline
-- [multilingual_toxicity_final.ipynb](multilingual_toxicity_final.ipynb) for the multilingual version with translation and visualization
-- [backend/app/services/toxicity.py](backend/app/services/toxicity.py) for the production service used by the API
+## Repository layout
 
-## What this project does in real life
+- **Main+project.ipynb** — exploratory notebook with the core toxicity pipeline.
+- **multilingual_toxicity_final.ipynb** — multilingual pipeline with translation and visualizations.
+- **backend/** — FastAPI backend and production-like service code.
+  - `backend/app/services/toxicity.py` — core detection and translation logic used by the API.
+  - `backend/app/main.py` — FastAPI app entrypoint.
+  - `backend/social.db` — SQLite DB used by the backend (kept in repo for demo).
+- **TOXICITY_SOCIAL_MEDIA-main/** — example frontend (Vite + React/TS) used for demos.
+- **requirements.txt** — Python dependencies for the backend and notebooks.
+- **.gitignore** — ignore rules for local artifacts.
 
-Imagine a user posting a comment on a social platform:
+## Quick start — backend (Python)
 
-- If the comment is harmless, it should be allowed.
-- If it is insulting, threatening, or hateful, it should be flagged or blocked.
-- If the comment is written in another language, the system should still understand it.
+1. Create and activate a Python virtual environment (recommended Python 3.10+):
 
-That is exactly what this project is built for. It behaves like an automatic moderation assistant that sits between the user and the platform.
+```
+python -m venv .venv
+.
+\venv\Scripts\activate  # Windows PowerShell
+```
 
-Example in practice:
+2. Install dependencies:
 
-- Input: "तुम बिल्कुल बेकार हो!"
-- Step 1: detect language as Hindi
-- Step 2: translate to English if needed
-- Step 3: clean the text
-- Step 4: send the text to the toxicity model
-- Step 5: get label scores such as insult and toxic
-- Step 6: convert the scores into a severity level
-- Step 7: return a result that the app can use to block, warn, or review
+```
+pip install -r requirements.txt
+```
 
-## NLP concepts used
+3. Set environment variables (create a `.env` file if needed). Example values:
 
-The main NLP concepts implemented in the project are:
+```
+DATABASE_URL=sqlite:///./backend/social.db
+SECRET_KEY=replace-with-a-secret
+```
 
-- Language detection
-- Machine translation for multilingual input
-- Text preprocessing and normalization
-- Transformer-based text classification
-- Multi-label toxicity classification
-- Probability scoring and threshold-based prediction
-- Severity level mapping
-- Multilingual text processing
-- Batch inference
-- Output structuring for analysis and reporting
+4. Run the backend FastAPI app (from the repository root):
 
-## How the pipeline works
+```
+cd backend
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
 
-The full moderation flow is simple in concept but powerful in practice.
+The API will be available at `http://localhost:8000` and interactive docs at `/docs`.
 
-### 1. User writes a message
+## Frontend demo
 
-The text may come from a comment, post, or direct message. It can be in English or any other language supported by the language detector and translator.
+The `TOXICITY_SOCIAL_MEDIA-main` folder contains a Vite + React TypeScript demo. From that folder:
 
-### 2. Language detection
+```
+cd TOXICITY_SOCIAL_MEDIA-main
+npm install
+npm run dev
+```
 
-The system first checks what language the text is written in using `langdetect`.
+Adjust the frontend API base URL in `src/lib/api.ts` if the backend runs on a non-default host/port.
 
-Why this matters:
+## Notebooks
 
-- The model is strongest on some languages directly.
-- For other languages, translation improves consistency.
-- It prevents sending unsupported text blindly into the classifier.
+- `Main+project.ipynb` — step-by-step experiments and model exploration.
+- `multilingual_toxicity_final.ipynb` — multilingual testing, translation, and visualization examples.
 
-### 3. Translation if needed
+Run the notebooks in Jupyter or VS Code to reproduce experiments. They include installation cells and usage examples.
 
-If the detected language is not one of the model’s native languages, the text is translated into English using `deep_translator`.
+## Notes and recommendations
 
-Why this matters:
+- `backend/social.db` is included for demo purposes. For production, switch to a separate DB server and set `DATABASE_URL`.
+- `.env`, local editor settings, `__pycache__`, and other development artifacts are ignored via `.gitignore`.
+- Remove any large model weights from the repo; load models at runtime or via package artifacts.
 
-- The toxicity model can analyze English reliably.
-- Translation makes the system usable for multilingual communities.
-- It allows the same moderation logic to work across many languages.
+## Contact / Attribution
 
-### 4. Text preprocessing
+This project and its notebooks were built as an academic/demo project. For questions or help running it, open an issue on the repository.
 
-Before prediction, the text is cleaned.
+---
 
-Typical preprocessing steps used in the notebooks and backend:
-
-- Remove URLs
-- Remove email addresses
-- Normalize repeated whitespace
-- Lowercase text in the notebook pipeline
-
-Why this matters:
-
-- URLs and emails usually do not help toxicity detection.
-- Cleaning reduces noise.
-- Normalization improves consistency before inference.
-
-### 5. Toxicity model inference
-
-The cleaned text goes into the Detoxify model, which is a pre-trained transformer-based classifier.
-
-The model outputs scores for several toxicity categories. These are not just yes/no values. They are probability-like confidence scores between 0 and 1.
-
-Why this matters:
-
-- A single message may be toxic in more than one way.
-- Multi-label prediction is more realistic than one flat label.
-- Probability scores let the system make flexible moderation decisions.
-
-### 6. Thresholding and label detection
-
-Each label score is compared with a threshold.
-
-- If a score is above the threshold, that toxicity type is considered detected.
-- If no score crosses the threshold, the content is considered clean or low risk.
-
-Why this matters:
-
-- Not every score should trigger moderation.
-- The threshold lets the platform tune sensitivity.
-- Different apps can choose stricter or softer moderation rules.
-
-### 7. Severity mapping
-
-The highest score or a weighted score is converted into a severity level.
-
-Common severity levels in the project:
-
-- NONE
-- LOW
-- MEDIUM
-- HIGH
-- CRITICAL
-
-Why this matters:
-
-- A platform can treat mild profanity differently from a direct threat.
-- Severity is easier for moderation teams to act on than raw scores.
-- It helps decide whether to allow, warn, hide, or escalate content.
-
-### 8. Structured output
-
-The final result is returned as a structured object or JSON response.
-
-It usually includes:
-
-- original input text
-- detected language
-- translated text if translation happened
-- toxicity scores for each label
-- detected labels
-- severity level
-- timestamp or metadata
-
-Why this matters:
-
-- The backend can store results.
-- The frontend can display them.
-- Moderators can review them quickly.
-
-## Real-life moderation example
-
-Input message:
-
-"तुम बिल्कुल बेकार हो और तुम्हें यहाँ नहीं होना चाहिए!"
-
-What happens:
-
-1. The system detects Hindi.
-2. Because Hindi is not handled natively by the model in the main production flow, it translates the text into English.
-3. The translated text is cleaned.
-4. The model predicts toxicity scores.
-5. The insult and general toxicity scores rise above the threshold.
-6. The system returns a high severity result.
-7. The application can now block the message, warn the user, or send it to a moderation queue.
-
-That is how NLP becomes useful in a live product. The model is not just classifying text for a notebook. It is deciding how the platform should respond to a user’s content in real time.
-
-## What is implemented in each notebook
-
-### Main+project.ipynb
-
-This notebook focuses on the core toxicity workflow:
-
-- installs dependencies
-- imports libraries
-- prepares a text preprocessor
-- loads the Detoxify model
-- tests sample comments
-- computes predictions and severity
-- runs batch processing
-- exports JSON and CSV results
-
-Conceptually, this notebook is the best place to understand the basic NLP flow from raw text to toxicity decision.
-
-### multilingual_toxicity_final.ipynb
-
-This notebook expands the idea into a full multilingual moderation pipeline:
-
-- language detection with confidence
-- translation for non-native languages
-- preprocessing before inference
-- Detoxify multilingual model loading
-- structured toxicity output
-- visual summaries and reports
-- detailed analysis of multilingual samples
-
-Conceptually, this notebook shows how the same NLP pipeline can work across languages in a real moderation system.
-
-### backend/app/services/toxicity.py
-
-This is the production service used by the backend API.
-
-It includes:
-
-- language detection
-- translation caching
-- preprocessing
-- model loading
-- toxicity scoring
-- severity mapping
-- JSON-ready output
-
-Conceptually, this is the version that matters for the real application, because it is what the API can call whenever a user submits text.
-
-## Why the model is useful in a social app
+Updated: May 29, 2026
 
 In a social platform, toxicity detection is usually used for:
 
